@@ -69,10 +69,15 @@ function displaceRockGeometry(
   return geometry;
 }
 
+export interface BuildShrineOptions {
+  omitExteriorTerrain?: boolean;
+}
+
 export function buildShrineScene(
   anisotropy: number,
   initialWishTags: SavedWishTag[],
   isSoftwareGl: boolean,
+  options: BuildShrineOptions = {},
 ): ShrineSceneRig {
   const root = new THREE.Group();
   const disposables: Array<{ dispose: () => void }> = [];
@@ -233,38 +238,40 @@ export function buildShrineScene(
   // =========================================================================
   // 1. SURROUNDING MT. GWANSAN TERRAIN & PAVILION STONE TERRACE
   // =========================================================================
-  const groundGeo = track(new THREE.PlaneGeometry(110, 110, 24, 24));
-  groundGeo.rotateX(-Math.PI / 2);
-  const gPos = groundGeo.attributes.position;
-  for (let i = 0; i < gPos.count; i++) {
-    const x = gPos.getX(i);
-    const z = gPos.getZ(i);
-    const dist = Math.hypot(x, z);
-    let y = -0.45;
-    if (dist > 5.5) {
-      // Gentle mountain valley rise around the back and sides, lower foreground path
-      const backSlope = z < -2 ? Math.pow((-z - 2) * 0.22, 1.35) * 0.7 : 0;
-      const sideRoll = Math.sin(x * 0.14) * Math.cos(z * 0.11) * 0.9 + (dist - 5.5) * 0.09;
-      y = -0.45 + backSlope + Math.max(0, sideRoll * 0.55);
-      // Keep front approach trail level
-      if (z > 2 && Math.abs(x) < 2.2) {
-        y = -0.45 - Math.min(0.35, (z - 2) * 0.02);
+  if (!options.omitExteriorTerrain) {
+    const groundGeo = track(new THREE.PlaneGeometry(110, 110, 24, 24));
+    groundGeo.rotateX(-Math.PI / 2);
+    const gPos = groundGeo.attributes.position;
+    for (let i = 0; i < gPos.count; i++) {
+      const x = gPos.getX(i);
+      const z = gPos.getZ(i);
+      const dist = Math.hypot(x, z);
+      let y = -0.45;
+      if (dist > 5.5) {
+        // Gentle mountain valley rise around the back and sides, lower foreground path
+        const backSlope = z < -2 ? Math.pow((-z - 2) * 0.22, 1.35) * 0.7 : 0;
+        const sideRoll = Math.sin(x * 0.14) * Math.cos(z * 0.11) * 0.9 + (dist - 5.5) * 0.09;
+        y = -0.45 + backSlope + Math.max(0, sideRoll * 0.55);
+        // Keep front approach trail level
+        if (z > 2 && Math.abs(x) < 2.2) {
+          y = -0.45 - Math.min(0.35, (z - 2) * 0.02);
+        }
       }
+      gPos.setY(i, y);
     }
-    gPos.setY(i, y);
-  }
-  groundGeo.computeVertexNormals();
+    groundGeo.computeVertexNormals();
 
-  const groundMat = track(
-    new THREE.MeshStandardMaterial({
-      color: 0x4a4d3b,
-      roughness: 0.96,
-      metalness: 0.0,
-    }),
-  );
-  const groundMesh = new THREE.Mesh(groundGeo, groundMat);
-  groundMesh.receiveShadow = true;
-  root.add(groundMesh);
+    const groundMat = track(
+      new THREE.MeshStandardMaterial({
+        color: 0x4a4d3b,
+        roughness: 0.96,
+        metalness: 0.0,
+      }),
+    );
+    const groundMesh = new THREE.Mesh(groundGeo, groundMat);
+    groundMesh.receiveShadow = true;
+    root.add(groundMesh);
+  }
 
   // Pavilion stone terrace base
   const terraceBaseGeo = track(new THREE.BoxGeometry(6.3, 0.45, 5.5));
@@ -559,7 +566,7 @@ export function buildShrineScene(
     pavilionGroup.add(pillar);
   });
 
-  // White Granite Stone Balustrade / Railing (화강암 석조 난간)
+  // White Granite Stone Balustrade / Railing (화강암 석조 난간 — InstancedMesh for high FPS)
   const postBodyGeo = track(new THREE.BoxGeometry(0.16, 0.72, 0.16));
   const postCapProfile = [
     new THREE.Vector2(0, 0),
@@ -570,10 +577,21 @@ export function buildShrineScene(
     new THREE.Vector2(0.04, 0.17),
     new THREE.Vector2(0, 0.2),
   ];
-  const postCapGeo = track(new THREE.LatheGeometry(postCapProfile, 16));
-  const balusterGeo = track(new THREE.CylinderGeometry(0.042, 0.048, 0.42, 12));
+  const postCapGeo = track(new THREE.LatheGeometry(postCapProfile, 12));
+  const balusterGeo = track(new THREE.CylinderGeometry(0.042, 0.048, 0.42, 10));
 
-  const addBalustradeSection = (x1: number, z1: number, x2: number, z2: number, balustersCount: number) => {
+  const balSections: Array<[number, number, number, number, number]> = [
+    [-2.35, 2.15, -0.95, 2.15, 3],
+    [0.95, 2.15, 2.35, 2.15, 3],
+    [-2.55, 1.95, -2.55, 0.2, 4],
+    [2.55, 1.95, 2.55, 0.2, 4],
+  ];
+
+  const instDummy = new THREE.Object3D();
+  const shrinePostCoords: Array<[number, number]> = [];
+  const shrineBalCoords: Array<[number, number]> = [];
+
+  balSections.forEach(([x1, z1, x2, z2, balustersCount]) => {
     const dx = x2 - x1;
     const dz = z2 - z1;
     const len = Math.hypot(dx, dz);
@@ -583,21 +601,6 @@ export function buildShrineScene(
     bay.position.set(x1, 0.04, z1);
     bay.rotation.y = angle;
 
-    // Two end posts
-    [0, len].forEach((offset) => {
-      const post = new THREE.Mesh(postBodyGeo, whiteBalustradeMat);
-      post.position.set(0, 0.36, offset);
-      post.castShadow = castShadowFlag;
-      post.receiveShadow = true;
-      bay.add(post);
-
-      const cap = new THREE.Mesh(postCapGeo, whiteBalustradeMat);
-      cap.position.set(0, 0.72, offset);
-      cap.castShadow = castShadowFlag;
-      bay.add(cap);
-    });
-
-    // Top & bottom granite rails
     const railGeo = track(new THREE.BoxGeometry(0.11, 0.08, len));
     const topRail = new THREE.Mesh(railGeo, whiteBalustradeMat);
     topRail.position.set(0, 0.62, len / 2);
@@ -606,27 +609,48 @@ export function buildShrineScene(
 
     const botRail = new THREE.Mesh(railGeo, whiteBalustradeMat);
     botRail.position.set(0, 0.14, len / 2);
-    botRail.castShadow = castShadowFlag;
     bay.add(botRail);
-
-    // Vertical balusters
-    for (let i = 1; i <= balustersCount; i++) {
-      const bz = (len / (balustersCount + 1)) * i;
-      const bal = new THREE.Mesh(balusterGeo, whiteBalustradeMat);
-      bal.position.set(0, 0.38, bz);
-      bal.castShadow = castShadowFlag;
-      bay.add(bal);
-    }
-
     pavilionGroup.add(bay);
-  };
 
-  // Front left & right balustrades (central doorway open at x in [-0.95, 0.95])
-  addBalustradeSection(-2.35, 2.15, -0.95, 2.15, 3);
-  addBalustradeSection(0.95, 2.15, 2.35, 2.15, 3);
-  // Left & right side balustrades
-  addBalustradeSection(-2.55, 1.95, -2.55, 0.2, 4);
-  addBalustradeSection(2.55, 1.95, 2.55, 0.2, 4);
+    shrinePostCoords.push([x1, z1], [x2, z2]);
+    for (let i = 1; i <= balustersCount; i++) {
+      const t = i / (balustersCount + 1);
+      shrineBalCoords.push([x1 + dx * t, z1 + dz * t]);
+    }
+  });
+
+  const shrinePostInst = new THREE.InstancedMesh(postBodyGeo, whiteBalustradeMat, shrinePostCoords.length);
+  const shrineCapInst = new THREE.InstancedMesh(postCapGeo, whiteBalustradeMat, shrinePostCoords.length);
+  shrinePostCoords.forEach(([px, pz], idx) => {
+    instDummy.position.set(px, 0.4, pz);
+    instDummy.rotation.set(0, 0, 0);
+    instDummy.scale.setScalar(1);
+    instDummy.updateMatrix();
+    shrinePostInst.setMatrixAt(idx, instDummy.matrix);
+
+    instDummy.position.set(px, 0.76, pz);
+    instDummy.updateMatrix();
+    shrineCapInst.setMatrixAt(idx, instDummy.matrix);
+  });
+  shrinePostInst.instanceMatrix.needsUpdate = true;
+  shrineCapInst.instanceMatrix.needsUpdate = true;
+  shrinePostInst.castShadow = castShadowFlag;
+  shrinePostInst.receiveShadow = true;
+  shrinePostInst.computeBoundingSphere();
+  shrineCapInst.computeBoundingSphere();
+  pavilionGroup.add(shrinePostInst, shrineCapInst);
+
+  const shrineBalInst = new THREE.InstancedMesh(balusterGeo, whiteBalustradeMat, shrineBalCoords.length);
+  shrineBalCoords.forEach(([bx, bz], idx) => {
+    instDummy.position.set(bx, 0.42, bz);
+    instDummy.rotation.set(0, 0, 0);
+    instDummy.scale.setScalar(1);
+    instDummy.updateMatrix();
+    shrineBalInst.setMatrixAt(idx, instDummy.matrix);
+  });
+  shrineBalInst.instanceMatrix.needsUpdate = true;
+  shrineBalInst.computeBoundingSphere();
+  pavilionGroup.add(shrineBalInst);
 
   // Wooden Beams & Rafters (서까래 및 대들보)
   const timberGroup = new THREE.Group();
@@ -650,22 +674,26 @@ export function buildShrineScene(
     timberGroup.add(beam);
   });
 
-  // Exposed wooden rafters (서까래) extending out under the eaves
-  const rafterGeo = track(new THREE.CylinderGeometry(0.052, 0.058, 3.15, 10));
+  // Exposed wooden rafters (서까래 — 1 InstancedMesh instead of 30 draw calls)
+  const rafterGeo = track(new THREE.CylinderGeometry(0.052, 0.058, 3.15, 8));
+  const rafterInst = new THREE.InstancedMesh(rafterGeo, woodMat, 30);
+  let rIdx = 0;
   for (let i = -7; i <= 7; i++) {
     const rx = i * 0.42;
-    // Front slope rafters
-    const fRafter = new THREE.Mesh(rafterGeo, woodMat);
-    fRafter.position.set(rx, 0.46, 1.48);
-    fRafter.rotation.x = Math.PI / 2 - 0.36;
-    timberGroup.add(fRafter);
+    instDummy.position.set(rx, 0.46, 1.48);
+    instDummy.rotation.set(Math.PI / 2 - 0.36, 0, 0);
+    instDummy.scale.setScalar(1);
+    instDummy.updateMatrix();
+    rafterInst.setMatrixAt(rIdx++, instDummy.matrix);
 
-    // Rear slope rafters
-    const bRafter = new THREE.Mesh(rafterGeo, woodMat);
-    bRafter.position.set(rx, 0.46, -1.38);
-    bRafter.rotation.x = -(Math.PI / 2 - 0.36);
-    timberGroup.add(bRafter);
+    instDummy.position.set(rx, 0.46, -1.38);
+    instDummy.rotation.set(-(Math.PI / 2 - 0.36), 0, 0);
+    instDummy.updateMatrix();
+    rafterInst.setMatrixAt(rIdx++, instDummy.matrix);
   }
+  rafterInst.instanceMatrix.needsUpdate = true;
+  rafterInst.computeBoundingSphere();
+  timberGroup.add(rafterInst);
 
   // Traditional Korean Dark-Gray Tiled Roof (한식 기와지붕)
   const roofGroup = new THREE.Group();
@@ -853,22 +881,26 @@ export function buildShrineScene(
     lanternLights.push(pLight);
   });
 
+  const sharedLanternMats = lanternColors.map((colHex) =>
+    track(
+      new THREE.MeshStandardMaterial({
+        color: colHex,
+        emissive: new THREE.Color(colHex),
+        emissiveIntensity: 0.42,
+        roughness: 0.55,
+        metalness: 0.02,
+      }),
+    ),
+  );
+
   lanternCoords.forEach(([lx, ly, lz], idx) => {
     const pivot = new THREE.Group();
     pivot.position.set(lx, ly, lz);
     root.add(pivot);
 
-    const colHex = lanternColors[idx % lanternColors.length];
-    const baseEmissive = new THREE.Color(colHex);
-    const bodyMat = track(
-      new THREE.MeshStandardMaterial({
-        color: colHex,
-        emissive: baseEmissive,
-        emissiveIntensity: 0.42,
-        roughness: 0.55,
-        metalness: 0.02,
-      }),
-    );
+    const colIdx = idx % lanternColors.length;
+    const baseEmissive = new THREE.Color(lanternColors[colIdx]);
+    const bodyMat = sharedLanternMats[colIdx];
 
     const cord = new THREE.Mesh(cordGeo, cordMat);
     cord.position.y = -0.19;
@@ -967,12 +999,8 @@ export function buildShrineScene(
     [8.4, -0.15, 4.6, 1.2],
   ];
 
+  const pineCanopyMatrices: Array<{ pos: [number, number, number]; sc: [number, number, number] }> = [];
   pineCoords.forEach(([tx, ty, tz, scale], idx) => {
-    const tree = new THREE.Group();
-    tree.position.set(tx, ty, tz);
-    tree.scale.setScalar(scale);
-
-    // Curved Korean red pine trunk (TubeGeometry)
     const leanX = Math.sin(idx * 1.7) * 0.45;
     const leanZ = Math.cos(idx * 2.1) * 0.3;
     const curve = new THREE.CatmullRomCurve3([
@@ -981,76 +1009,90 @@ export function buildShrineScene(
       new THREE.Vector3(leanX, 3.2, leanZ),
       new THREE.Vector3(leanX * 0.7, 4.6, leanZ * 0.8),
     ]);
-    const trunkGeo = track(new THREE.TubeGeometry(curve, 12, 0.16, 8, false));
+    const trunkGeo = track(new THREE.TubeGeometry(curve, 10, 0.16, 7, false));
     const trunk = new THREE.Mesh(trunkGeo, barkMat);
+    trunk.position.set(tx, ty, tz);
+    trunk.scale.setScalar(scale);
     trunk.castShadow = castShadowFlag;
-    tree.add(trunk);
+    root.add(trunk);
 
-    // Tiered flat pine needle canopies (3–4 puffs per pine)
     const canopyOffsets: Array<[number, number, number, number]> = [
       [leanX * 0.7, 4.75, leanZ * 0.8, 1.15],
       [leanX + 0.7, 3.95, leanZ + 0.4, 0.88],
       [leanX - 0.65, 3.65, leanZ - 0.35, 0.82],
     ];
     canopyOffsets.forEach(([cx, cy, cz, cs]) => {
-      const puff = new THREE.Mesh(needleGeo, pineNeedleMat);
-      puff.position.set(cx, cy, cz);
-      puff.scale.set(cs * 1.3, cs * 0.48, cs * 1.25);
-      puff.castShadow = castShadowFlag;
-      puff.receiveShadow = true;
-      tree.add(puff);
+      pineCanopyMatrices.push({
+        pos: [tx + cx * scale, ty + cy * scale, tz + cz * scale],
+        sc: [cs * 1.3 * scale, cs * 0.48 * scale, cs * 1.25 * scale],
+      });
     });
-
-    root.add(tree);
   });
 
-  // Stacked Stone Wish Cairns (돌탑) flanking the front courtyard
-  const cairnRockGeo = track(displaceRockGeometry(new THREE.SphereGeometry(0.28, 12, 9), 42, 0.12));
+  const pineCanopyInst = new THREE.InstancedMesh(needleGeo, pineNeedleMat, pineCanopyMatrices.length);
+  pineCanopyMatrices.forEach((entry, idx) => {
+    instDummy.position.set(...entry.pos);
+    instDummy.rotation.set(0, idx * 0.7, 0);
+    instDummy.scale.set(...entry.sc);
+    instDummy.updateMatrix();
+    pineCanopyInst.setMatrixAt(idx, instDummy.matrix);
+  });
+  pineCanopyInst.instanceMatrix.needsUpdate = true;
+  pineCanopyInst.castShadow = castShadowFlag;
+  pineCanopyInst.receiveShadow = true;
+  pineCanopyInst.computeBoundingSphere();
+  root.add(pineCanopyInst);
+
+  // Stacked Stone Wish Cairns (돌탑) flanking the front courtyard (1 InstancedMesh)
+  const cairnRockGeo = track(displaceRockGeometry(new THREE.SphereGeometry(0.28, 10, 8), 42, 0.12));
   const cairnCoords: Array<[number, number, number]> = [
     [-3.35, -0.4, 2.7],
     [3.4, -0.4, 2.65],
     [-3.95, -0.35, 1.2],
     [4.0, -0.35, 1.25],
   ];
+  const shrineCairnInst = new THREE.InstancedMesh(cairnRockGeo, pedestalGraniteMat, cairnCoords.length * 6);
+  let scIdx = 0;
   cairnCoords.forEach(([cx, cy, cz], cIdx) => {
-    const cairn = new THREE.Group();
-    cairn.position.set(cx, cy, cz);
     let curY = 0.08;
     for (let layer = 0; layer < 6; layer++) {
       const s = 1.0 - layer * 0.13;
-      const stone = new THREE.Mesh(cairnRockGeo, pedestalGraniteMat);
-      stone.scale.set(s * 1.2, s * 0.45, s * 1.1);
-      stone.position.set(
-        Math.sin(layer + cIdx) * 0.02,
-        curY,
-        Math.cos(layer + cIdx) * 0.02,
+      instDummy.position.set(
+        cx + Math.sin(layer + cIdx) * 0.02,
+        cy + curY,
+        cz + Math.cos(layer + cIdx) * 0.02,
       );
-      stone.rotation.y = layer * 0.8 + cIdx;
-      stone.castShadow = castShadowFlag;
-      stone.receiveShadow = true;
-      cairn.add(stone);
+      instDummy.rotation.set(0, layer * 0.8 + cIdx, 0);
+      instDummy.scale.set(s * 1.2, s * 0.45, s * 1.1);
+      instDummy.updateMatrix();
+      shrineCairnInst.setMatrixAt(scIdx++, instDummy.matrix);
       curY += 0.22 * s;
     }
-    root.add(cairn);
   });
+  shrineCairnInst.instanceMatrix.needsUpdate = true;
+  shrineCairnInst.receiveShadow = true;
+  shrineCairnInst.computeBoundingSphere();
+  root.add(shrineCairnInst);
 
   // Distant Mt. Gwansan mountain horizon ring
-  const mountainMat = track(
-    new THREE.MeshStandardMaterial({
-      color: 0x35403a,
-      roughness: 0.96,
-      metalness: 0.0,
-    }),
-  );
-  const mountainGeo = track(new THREE.ConeGeometry(16, 13, 7));
-  for (let i = 0; i < 12; i++) {
-    const angle = (i / 12) * Math.PI * 2;
-    const dist = 34 + (i % 3) * 6;
-    const peak = new THREE.Mesh(mountainGeo, mountainMat);
-    peak.position.set(Math.cos(angle) * dist, 3.5 + (i % 2) * 2.5, Math.sin(angle) * dist);
-    peak.scale.set(1.2 + (i % 3) * 0.25, 0.85 + (i % 4) * 0.2, 1.1);
-    peak.rotation.y = i * 0.5;
-    root.add(peak);
+  if (!options.omitExteriorTerrain) {
+    const mountainMat = track(
+      new THREE.MeshStandardMaterial({
+        color: 0x35403a,
+        roughness: 0.96,
+        metalness: 0.0,
+      }),
+    );
+    const mountainGeo = track(new THREE.ConeGeometry(16, 13, 7));
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2;
+      const dist = 34 + (i % 3) * 6;
+      const peak = new THREE.Mesh(mountainGeo, mountainMat);
+      peak.position.set(Math.cos(angle) * dist, 3.5 + (i % 2) * 2.5, Math.sin(angle) * dist);
+      peak.scale.set(1.2 + (i % 3) * 0.25, 0.85 + (i % 4) * 0.2, 1.1);
+      peak.rotation.y = i * 0.5;
+      root.add(peak);
+    }
   }
 
   // =========================================================================

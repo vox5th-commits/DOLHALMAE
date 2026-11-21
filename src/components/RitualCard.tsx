@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { ChevronDown, ChevronUp, Flame, Hand, RotateCcw, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronUp, Flame, Footprints, Hand, RotateCcw, Sparkles } from 'lucide-react';
 import {
   validateWishInput,
   type RitualOutcome,
@@ -25,13 +25,14 @@ export interface RitualCardProps {
   onSubmitWish: () => void;
   onHangWishTag: () => void;
   onRestartRitual: () => void;
+  onExitShrine: () => void;
 }
 
 const STEP_LABELS: Array<{ step: RitualStep; label: string }> = [
-  { step: 1, label: '1. 합장 삼배' },
-  { step: 2, label: '2. 첫 번째 들기' },
-  { step: 3, label: '3. 소원 빌기' },
-  { step: 4, label: '4. 두 번째 들기' },
+  { step: 1, label: '1.삼배' },
+  { step: 2, label: '2.첫들기' },
+  { step: 3, label: '3.소원' },
+  { step: 4, label: '4.둘째들기' },
 ];
 
 export function RitualCard({
@@ -53,6 +54,7 @@ export function RitualCard({
   onSubmitWish,
   onHangWishTag,
   onRestartRitual,
+  onExitShrine,
 }: RitualCardProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [wishError, setWishError] = useState<string | null>(null);
@@ -71,142 +73,139 @@ export function RitualCard({
   return (
     <section
       aria-label="돌할매 기도 의식 안내"
-      className="pointer-events-none fixed bottom-4 left-1/2 z-20 flex w-[min(600px,94vw)] -translate-x-1/2 flex-col items-center sm:bottom-6"
+      className="pointer-events-none fixed bottom-0 left-0 right-0 z-20 flex flex-col items-center sm:bottom-3 sm:left-1/2 sm:right-auto sm:w-[min(520px,94vw)] sm:-translate-x-1/2"
     >
-      <button
-        type="button"
-        onClick={() => setCollapsed((prev) => !prev)}
-        className="pointer-events-auto mb-2 flex items-center gap-1.5 rounded-t-lg border border-b-0 border-[#f2e8d5]/12 bg-[#161412]/84 px-3 py-1 text-xs text-[#cfc3ae] transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-amber-300"
-      >
-        {collapsed ? (
-          <>
+      {collapsed ? (
+        <div className="pointer-events-auto mb-2.5 flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setCollapsed(false)}
+            className="flex h-8 items-center gap-1 rounded-full border border-white/15 bg-slate-900/82 px-3 text-[11px] text-white"
+          >
             <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
             <span>기도 안내 열기</span>
-          </>
-        ) : (
-          <>
-            <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>전각 넓게 보기</span>
-          </>
-        )}
-      </button>
-
-      {!collapsed && (
-        <div className="pointer-events-auto w-full rounded-2xl border border-[#f2e8d5]/15 bg-[#161412]/88 px-5 py-4 text-[#f4efe6] shadow-2xl sm:px-6 sm:py-5">
-          {/* Clean Unboxed Step Metadata */}
-          <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-xs text-[#9e9381]">
-            {STEP_LABELS.map((item, idx) => {
-              const isActive =
-                ritualStep === item.step || (ritualStep === 'result' && item.step === 4);
-              return (
-                <span key={String(item.step)} className="flex items-center gap-2.5">
-                  {idx > 0 && <span aria-hidden="true">·</span>}
-                  <span
-                    className={
-                      isActive ? 'font-semibold text-[#f3cb83]' : 'text-[#9e9381]'
-                    }
-                  >
-                    {item.label}
+          </button>
+          <button
+            type="button"
+            onClick={onExitShrine}
+            className="flex h-8 items-center gap-1 rounded-full border border-white/15 bg-slate-900/82 px-3 text-[11px] text-amber-200"
+          >
+            <Footprints className="h-3 w-3" aria-hidden="true" />
+            <span>공원으로</span>
+          </button>
+        </div>
+      ) : (
+        <div className="pointer-events-auto w-full max-h-[32vh] overflow-y-auto rounded-t-2xl border-t border-white/15 bg-slate-900/82 p-3 text-white shadow-2xl sm:rounded-2xl sm:border">
+          {/* Ultra-Compact Header Row: Step Progress + Quick Exit + Collapse */}
+          <div className="flex items-center justify-between gap-2 text-[11px] text-white/60">
+            <div className="flex items-center gap-1.5 truncate">
+              {STEP_LABELS.map((item, idx) => {
+                const isActive =
+                  ritualStep === item.step || (ritualStep === 'result' && item.step === 4);
+                return (
+                  <span key={String(item.step)} className="flex items-center gap-1.5">
+                    {idx > 0 && <span aria-hidden="true">·</span>}
+                    <span className={isActive ? 'font-semibold text-amber-300' : 'text-white/55'}>
+                      {item.label}
+                    </span>
                   </span>
-                </span>
-              );
-            })}
+                );
+              })}
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                onClick={onExitShrine}
+                className="flex h-6 items-center gap-1 rounded-full border border-white/15 bg-white/10 px-2 text-[11px] text-amber-200 hover:bg-white/15"
+              >
+                <Footprints className="h-3 w-3" aria-hidden="true" />
+                <span>공원으로</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCollapsed(true)}
+                aria-label="기도 안내 접기"
+                className="flex h-6 w-6 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white/80 hover:bg-white/15"
+              >
+                <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </div>
           </div>
 
           {/* Step 1: 합장 삼배 */}
           {ritualStep === 1 && (
-            <div className="mt-3 text-center">
-              <p className="font-serif-kr text-sm leading-relaxed text-[#f4efe6] sm:text-base">
-                돌할매 앞에 마음을 가라앉히고 합장하여 삼배를 올립니다.
+            <div className="mt-2 flex items-center justify-between gap-2 sm:flex-col sm:text-center">
+              <p className="truncate font-serif-kr text-xs text-white/95 sm:text-sm">
+                돌할매 앞에 합장하여 삼배를 올립니다.
               </p>
-              <div className="mt-4 flex justify-center">
-                <button
-                  type="button"
-                  onClick={onStartBow}
-                  disabled={isBowing}
-                  className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-[#e6ba73] px-6 py-2.5 text-sm font-semibold text-[#18140f] transition-colors hover:bg-[#f0ca8a] disabled:cursor-wait disabled:opacity-80 whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200"
-                >
-                  <Hand className="h-4 w-4" aria-hidden="true" />
-                  <span>
-                    {isBowing
-                      ? `경건히 삼배 올리는 중 (${Math.min(3, bowCount + 1)}/3배)`
-                      : '합장하고 삼배 올리기'}
-                  </span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={onStartBow}
+                disabled={isBowing}
+                className="flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full bg-amber-300 px-4 text-xs font-semibold text-slate-950 transition-colors hover:bg-amber-200 disabled:opacity-80 whitespace-nowrap"
+              >
+                <Hand className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>
+                  {isBowing ? `삼배 중 (${Math.min(3, bowCount + 1)}/3)` : '합장 삼배 올리기'}
+                </span>
+              </button>
             </div>
           )}
 
           {/* Step 2: 첫 번째 들기 */}
           {ritualStep === 2 && (
-            <div className="mt-3 text-center">
-              <p className="font-serif-kr text-sm leading-relaxed text-[#f4efe6] sm:text-base">
-                아무 생각 없이 두 손으로 돌할매를 들어 원래 무게(약 10kg)를 느껴보세요.
-              </p>
-              <p className="mt-1.5 text-xs text-[#c7bba6]">
+            <div className="mt-2 flex items-center justify-between gap-2 sm:flex-col sm:text-center">
+              <p className="truncate font-serif-kr text-xs text-white/95 sm:text-sm">
                 {isPullingStone
-                  ? '돌할매를 들어 올리고 있습니다. 무게를 느낀 뒤 놓아주세요.'
+                  ? '돌할매를 들어 무게를 느낀 뒤 놓아주세요.'
                   : isStoneHovered
-                    ? '돌할매를 길게 누르거나 위로 끌어올려 보세요.'
-                    : '화면 속 돌할매를 클릭해 길게 누르거나 아래 버튼을 누르고 계세요.'}
+                    ? '돌할매를 길게 눌러 올려보세요.'
+                    : '돌할매를 길게 눌러 원래 무게를 느껴보세요.'}
               </p>
-              <div className="mt-4 flex justify-center">
-                <button
-                  type="button"
-                  onPointerDown={onHoldPullStart}
-                  onPointerUp={onHoldPullEnd}
-                  onPointerLeave={onHoldPullEnd}
-                  onPointerCancel={onHoldPullEnd}
-                  onKeyDown={(e) => {
-                    if (e.key === ' ' || e.key === 'Enter') {
-                      e.preventDefault();
-                      onHoldPullStart();
-                    }
-                  }}
-                  onKeyUp={(e) => {
-                    if (e.key === ' ' || e.key === 'Enter') {
-                      e.preventDefault();
-                      onHoldPullEnd();
-                    }
-                  }}
-                  className={`flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold transition-colors whitespace-nowrap select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200 ${
-                    isPullingStone
-                      ? 'bg-[#f3cb83] text-[#18140f]'
-                      : 'bg-[#e6ba73] text-[#18140f] hover:bg-[#f0ca8a]'
-                  }`}
-                >
-                  <span>{isPullingStone ? '들어 올리는 중… (놓으면 내려놓습니다)' : '돌 들어보기'}</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onPointerDown={onHoldPullStart}
+                onPointerUp={onHoldPullEnd}
+                onPointerLeave={onHoldPullEnd}
+                onPointerCancel={onHoldPullEnd}
+                onKeyDown={(e) => {
+                  if (e.key === ' ' || e.key === 'Enter') {
+                    e.preventDefault();
+                    onHoldPullStart();
+                  }
+                }}
+                onKeyUp={(e) => {
+                  if (e.key === ' ' || e.key === 'Enter') {
+                    e.preventDefault();
+                    onHoldPullEnd();
+                  }
+                }}
+                className="flex h-9 shrink-0 items-center justify-center rounded-full bg-amber-300 px-4 text-xs font-semibold text-slate-950 transition-colors hover:bg-amber-200 whitespace-nowrap select-none"
+              >
+                {isPullingStone ? '드는 중…' : '돌 들어보기'}
+              </button>
             </div>
           )}
 
-          {/* Step 3: 신분 밝히기와 소원 빌기 */}
+          {/* Step 3: 소원 빌기 */}
           {ritualStep === 3 && (
-            <form onSubmit={handleWishFormSubmit} className="mt-3 space-y-3">
-              <p className="text-center font-serif-kr text-sm leading-relaxed text-[#f4efe6] sm:text-base">
-                주소·성명·나이를 마음속으로 밝히고, 간절한 한 가지 소원을 빌어보세요.
+            <form onSubmit={handleWishFormSubmit} className="mt-2 space-y-1.5">
+              <p className="truncate text-center font-serif-kr text-xs text-white/95">
+                마음을 담아 간절한 한 가지 소원을 빌어보세요.
               </p>
-              <div className="grid gap-2.5 sm:grid-cols-3">
-                <div className="sm:col-span-1">
-                  <label htmlFor="ritual-identity" className="sr-only">
-                    지역 또는 이름 (선택)
-                  </label>
-                  <input
-                    id="ritual-identity"
-                    type="text"
-                    maxLength={24}
-                    value={identityInput}
-                    onChange={(e) => onChangeIdentity(e.target.value)}
-                    disabled={isSendingEmbers}
-                    placeholder="지역/이름 (예: 영천시 홍길동)"
-                    className="min-h-[42px] w-full rounded-xl border border-[#f2e8d5]/15 bg-[#221e1a] px-3 py-2 text-xs text-[#f4efe6] placeholder:text-[#8f8473] focus:border-[#e6ba73] focus:outline-none"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label htmlFor="ritual-wish" className="sr-only">
-                    간절한 한 가지 소원
-                  </label>
+              <div className="flex flex-col gap-1.5 sm:flex-row">
+                <input
+                  id="ritual-identity"
+                  type="text"
+                  maxLength={24}
+                  value={identityInput}
+                  onChange={(e) => onChangeIdentity(e.target.value)}
+                  disabled={isSendingEmbers}
+                  aria-label="지역 또는 이름 (선택)"
+                  placeholder="지역/이름 (선택)"
+                  className="h-9 w-full rounded-xl border border-white/15 bg-slate-950/60 px-2.5 text-xs text-white placeholder:text-white/45 focus:border-amber-300 focus:outline-none sm:w-32"
+                />
+                <div className="flex flex-1 gap-1.5">
                   <input
                     id="ritual-wish"
                     type="text"
@@ -217,96 +216,91 @@ export function RitualCard({
                       if (wishError) setWishError(null);
                     }}
                     disabled={isSendingEmbers}
+                    aria-label="간절한 한 가지 소원"
                     placeholder="간절한 한 가지 소원..."
-                    className="min-h-[42px] w-full rounded-xl border border-[#f2e8d5]/15 bg-[#221e1a] px-3 py-2 text-sm text-[#f4efe6] placeholder:text-[#8f8473] focus:border-[#e6ba73] focus:outline-none"
+                    className="h-9 min-w-0 flex-1 rounded-xl border border-white/15 bg-slate-950/60 px-2.5 text-xs text-white placeholder:text-white/45 focus:border-amber-300 focus:outline-none"
                   />
+                  <button
+                    type="submit"
+                    disabled={isSendingEmbers}
+                    className="flex h-9 shrink-0 items-center justify-center gap-1 rounded-xl bg-amber-300 px-3 text-xs font-semibold text-slate-950 transition-colors hover:bg-amber-200 disabled:opacity-75 whitespace-nowrap"
+                  >
+                    <Flame className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span>{isSendingEmbers ? '전하는 중' : '소원 빌기'}</span>
+                  </button>
                 </div>
               </div>
               {wishError && (
-                <p role="alert" className="text-center text-xs text-amber-300">
+                <p role="alert" className="text-center text-[11px] text-amber-300">
                   {wishError}
                 </p>
               )}
-              <div className="flex justify-center pt-0.5">
-                <button
-                  type="submit"
-                  disabled={isSendingEmbers}
-                  className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-[#e6ba73] px-6 py-2.5 text-sm font-semibold text-[#18140f] transition-colors hover:bg-[#f0ca8a] disabled:opacity-75 whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200"
-                >
-                  <Flame className="h-4 w-4" aria-hidden="true" />
-                  <span>{isSendingEmbers ? '소원이 돌할매께 전해지는 중…' : '정성껏 소원 빌기'}</span>
-                </button>
-              </div>
             </form>
           )}
 
           {/* Step 4: 두 번째 들기 */}
           {ritualStep === 4 && (
-            <div className="mt-3 text-center">
-              <p className="font-serif-kr text-sm leading-relaxed text-[#f4efe6] sm:text-base">
-                이제 다시 돌할매를 들어보세요. 자석이 당기듯 묵직하게 들리지 않으면 소원이 이루어집니다.
-              </p>
-              <p className="mt-1.5 text-xs text-[#c7bba6]">
+            <div className="mt-2 flex items-center justify-between gap-2 sm:flex-col sm:text-center">
+              <p className="truncate font-serif-kr text-xs text-white/95 sm:text-sm">
                 {isPullingStone
-                  ? '두 손의 정성을 모아 돌할매를 들어 보고 있습니다…'
-                  : '화면 속 돌할매를 길게 누르거나 아래 버튼을 누르고 계세요.'}
+                  ? '정성을 모아 돌할매를 들어보고 있습니다…'
+                  : '다시 들어보세요. 꿈쩍하지 않으면 소원이 이루어집니다.'}
               </p>
-              <div className="mt-4 flex justify-center">
-                <button
-                  type="button"
-                  onPointerDown={onHoldPullStart}
-                  onPointerUp={onHoldPullEnd}
-                  onPointerLeave={onHoldPullEnd}
-                  onPointerCancel={onHoldPullEnd}
-                  onKeyDown={(e) => {
-                    if (e.key === ' ' || e.key === 'Enter') {
-                      e.preventDefault();
-                      onHoldPullStart();
-                    }
-                  }}
-                  onKeyUp={(e) => {
-                    if (e.key === ' ' || e.key === 'Enter') {
-                      e.preventDefault();
-                      onHoldPullEnd();
-                    }
-                  }}
-                  className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-[#e6ba73] px-6 py-2.5 text-sm font-semibold text-[#18140f] transition-colors hover:bg-[#f0ca8a] whitespace-nowrap select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200"
-                >
-                  <span>
-                    {isPullingStone ? '정성을 모으는 중…' : '두 번째로 돌 들어보기'}
-                  </span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onPointerDown={onHoldPullStart}
+                onPointerUp={onHoldPullEnd}
+                onPointerLeave={onHoldPullEnd}
+                onPointerCancel={onHoldPullEnd}
+                onKeyDown={(e) => {
+                  if (e.key === ' ' || e.key === 'Enter') {
+                    e.preventDefault();
+                    onHoldPullStart();
+                  }
+                }}
+                onKeyUp={(e) => {
+                  if (e.key === ' ' || e.key === 'Enter') {
+                    e.preventDefault();
+                    onHoldPullEnd();
+                  }
+                }}
+                className="flex h-9 shrink-0 items-center justify-center rounded-full bg-amber-300 px-4 text-xs font-semibold text-slate-950 transition-colors hover:bg-amber-200 whitespace-nowrap select-none"
+              >
+                {isPullingStone ? '정성 모으는 중…' : '두 번째 들기'}
+              </button>
             </div>
           )}
 
-          {/* Step 4 Result: 소원 성취 / 정성 더하기 */}
+          {/* Result */}
           {ritualStep === 'result' && (
-            <div className="mt-3 text-center">
-              <p className="font-serif-kr text-sm leading-relaxed text-[#f7ebd2] sm:text-base">
+            <div className="mt-2 space-y-2 text-center">
+              <p className="font-serif-kr text-xs leading-snug text-amber-100 sm:text-sm">
                 {resolvedOutcome === 'granted'
-                  ? '돌할매가 묵직하게 꿈쩍하지 않으셨습니다. 간절한 소원이 이루어질 징조입니다.'
-                  : '돌할매가 가볍게 들렸습니다. 마음을 비우고 맑은 정성으로 다시 한 번 빌어보세요.'}
+                  ? '돌할매가 묵직하게 꿈쩍하지 않으셨습니다. 소원이 이루어질 징조입니다.'
+                  : '돌할매가 가볍게 들렸습니다. 맑은 정성으로 다시 빌어보세요.'}
               </p>
-              <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5">
+              <div className="flex flex-wrap items-center justify-center gap-1.5">
                 <button
                   type="button"
                   onClick={onHangWishTag}
                   disabled={hasHungWishTag}
-                  className="flex min-h-[42px] items-center justify-center gap-1.5 rounded-xl bg-[#e6ba73] px-4 py-2 text-xs font-semibold text-[#18140f] transition-colors hover:bg-[#f0ca8a] disabled:cursor-default disabled:bg-[#4b4337] disabled:text-[#d9cbb3] whitespace-nowrap focus-visible:outline-2 focus-visible:outline-amber-200"
+                  className="flex h-8 items-center gap-1 rounded-full bg-amber-300 px-3 text-[11px] font-semibold text-slate-950 hover:bg-amber-200 disabled:bg-white/15 disabled:text-white/70 whitespace-nowrap"
                 >
-                  <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span>{hasHungWishTag ? '연등에 소원지를 매달았습니다' : '소원지 매달기'}</span>
+                  <Sparkles className="h-3 w-3" aria-hidden="true" />
+                  <span>{hasHungWishTag ? '소원지 부착 완료' : '소원지 매달기'}</span>
                 </button>
                 <button
                   type="button"
                   onClick={onRestartRitual}
-                  className="flex min-h-[42px] items-center justify-center gap-1.5 rounded-xl border border-[#f2e8d5]/20 bg-[#24201b] px-4 py-2 text-xs font-medium text-[#ede3d2] transition-colors hover:bg-[#312b24] whitespace-nowrap focus-visible:outline-2 focus-visible:outline-amber-200"
+                  className="flex h-8 items-center gap-1 rounded-full border border-white/15 bg-white/10 px-3 text-[11px] font-medium text-white hover:bg-white/15 whitespace-nowrap"
                 >
-                  <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span>처음부터 다시 기원하기</span>
+                  <RotateCcw className="h-3 w-3" aria-hidden="true" />
+                  <span>다시 기원</span>
                 </button>
               </div>
+              <p className="text-[11px] text-white/60">
+                주변 땅 클릭 · 방향키(WASD)로 공원 산책
+              </p>
             </div>
           )}
         </div>

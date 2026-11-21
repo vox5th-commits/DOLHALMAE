@@ -524,3 +524,333 @@ export function createContactShadowTexture(): THREE.CanvasTexture {
   tex.needsUpdate = true;
   return tex;
 }
+
+/**
+ * Light-gray interlocking park walkway pavers (공원 산책로 보도블록).
+ */
+export function createInterlockingPaverTextures(
+  anisotropy: number,
+  repeatX = 4,
+  repeatY = 4,
+): MaterialTextureSet {
+  const size = 512;
+  const albedo = document.createElement('canvas');
+  albedo.width = size;
+  albedo.height = size;
+  const ctx = albedo.getContext('2d')!;
+
+  const bump = document.createElement('canvas');
+  bump.width = size;
+  bump.height = size;
+  const bCtx = bump.getContext('2d')!;
+
+  ctx.fillStyle = '#c4c4bf';
+  ctx.fillRect(0, 0, size, size);
+  bCtx.fillStyle = '#a0a0a0';
+  bCtx.fillRect(0, 0, size, size);
+
+  const rand = seededRand(71234);
+  const rows = 8;
+  const cols = 8;
+  const cellW = size / cols;
+  const cellH = size / rows;
+
+  for (let r = 0; r < rows; r++) {
+    const offset = r % 2 === 1 ? cellW * 0.5 : 0;
+    for (let c = -1; c <= cols; c++) {
+      const x = c * cellW + offset;
+      const y = r * cellH;
+      const shade = Math.floor(178 + rand() * 28);
+      ctx.fillStyle = `rgb(${shade}, ${shade - 1}, ${shade - 5})`;
+      ctx.fillRect(x + 2, y + 2, cellW - 4, cellH - 4);
+
+      bCtx.fillStyle = `rgb(${155 + Math.floor(rand() * 30)}, ${155 + Math.floor(rand() * 30)}, ${155 + Math.floor(rand() * 30)})`;
+      bCtx.fillRect(x + 2, y + 2, cellW - 4, cellH - 4);
+    }
+  }
+
+  // Subtle granite mineral speckle across pavers
+  for (let i = 0; i < 2400; i++) {
+    const px = rand() * size;
+    const py = rand() * size;
+    ctx.fillStyle = rand() > 0.5 ? 'rgba(95, 96, 98, 0.25)' : 'rgba(235, 235, 232, 0.25)';
+    ctx.fillRect(px, py, 1.5, 1.5);
+  }
+
+  return {
+    map: configureTexture(albedo, true, anisotropy, repeatX, repeatY),
+    bumpMap: configureTexture(bump, false, anisotropy, repeatX, repeatY),
+  };
+}
+
+/**
+ * Lush natural Korean park lawn turf texture.
+ */
+export function createLawnGrassTextures(
+  anisotropy: number,
+  repeatX = 6,
+  repeatY = 6,
+): MaterialTextureSet {
+  const size = 512;
+  const albedo = document.createElement('canvas');
+  albedo.width = size;
+  albedo.height = size;
+  const ctx = albedo.getContext('2d')!;
+
+  const bump = document.createElement('canvas');
+  bump.width = size;
+  bump.height = size;
+  const bCtx = bump.getContext('2d')!;
+
+  ctx.fillStyle = '#4e7539';
+  ctx.fillRect(0, 0, size, size);
+  bCtx.fillStyle = '#7c7c7c';
+  bCtx.fillRect(0, 0, size, size);
+
+  const rand = seededRand(99013);
+  for (let i = 0; i < 160; i++) {
+    const x = rand() * size;
+    const y = rand() * size;
+    const r = 14 + rand() * 34;
+    ctx.fillStyle = rand() > 0.5 ? 'rgba(66, 102, 46, 0.22)' : 'rgba(96, 134, 62, 0.18)';
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  for (let i = 0; i < 4800; i++) {
+    const x = rand() * size;
+    const y = rand() * size;
+    const h = 3 + rand() * 5;
+    ctx.fillStyle = rand() > 0.45 ? 'rgba(104, 146, 68, 0.42)' : 'rgba(52, 82, 36, 0.42)';
+    ctx.fillRect(x, y, 1.5, h);
+    bCtx.fillStyle = rand() > 0.5 ? 'rgba(165, 165, 165, 0.45)' : 'rgba(90, 90, 90, 0.45)';
+    bCtx.fillRect(x, y, 1.5, h);
+  }
+
+  return {
+    map: configureTexture(albedo, true, anisotropy, repeatX, repeatY),
+    bumpMap: configureTexture(bump, false, anisotropy, repeatX, repeatY),
+  };
+}
+
+/**
+ * Green diamond wire-mesh fence texture (alphaTest cutouts).
+ */
+export function createWireFenceTexture(
+  anisotropy: number,
+  repeatX = 12,
+  repeatY = 3,
+): THREE.CanvasTexture {
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+
+  ctx.clearRect(0, 0, size, size);
+  ctx.strokeStyle = '#2d6e44';
+  ctx.lineWidth = 10;
+  ctx.lineCap = 'round';
+
+  const step = 64;
+  for (let x = -size; x <= size * 2; x += step) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x + size, size);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(x, size);
+    ctx.lineTo(x + size, 0);
+    ctx.stroke();
+  }
+
+  // Highlight center wire glint
+  ctx.strokeStyle = '#3f8a59';
+  ctx.lineWidth = 4;
+  for (let x = -size; x <= size * 2; x += step) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x + size, size);
+    ctx.stroke();
+  }
+
+  return configureTexture(canvas, true, anisotropy, repeatX, repeatY);
+}
+
+/**
+ * Dark granite park entrance monument sign reading "돌할매 공원".
+ */
+export function createParkSignTexture(anisotropy: number): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d')!;
+
+  // Polished dark granite background
+  ctx.fillStyle = '#2b2e33';
+  ctx.fillRect(0, 0, 512, 512);
+
+  const rand = seededRand(44102);
+  for (let i = 0; i < 3200; i++) {
+    const shade = Math.floor(32 + rand() * 58);
+    ctx.fillStyle = `rgba(${shade}, ${shade + 2}, ${shade + 4}, 0.35)`;
+    ctx.fillRect(rand() * 512, rand() * 512, 2, 2);
+  }
+
+  // Subtle engraved border
+  ctx.strokeStyle = '#9b865d';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(28, 28, 456, 456);
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  ctx.fillStyle = '#d9c69e';
+  ctx.font = '24px "Noto Serif KR", Georgia, serif';
+  ctx.fillText('경상북도 영천시 북안면', 256, 128);
+
+  ctx.fillStyle = '#f6ebd2';
+  ctx.font = 'bold 64px "Noto Serif KR", Georgia, serif';
+  ctx.fillText('돌할매 공원', 256, 248);
+
+  ctx.strokeStyle = '#8b7752';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(116, 312);
+  ctx.lineTo(396, 312);
+  ctx.stroke();
+
+  ctx.fillStyle = '#c5b89d';
+  ctx.font = '22px "Gowun Dodum", sans-serif';
+  ctx.fillText('십이지신상 · 관산 기도처', 256, 366);
+
+  return configureTexture(canvas, true, anisotropy, 1, 1);
+}
+
+/**
+ * Engraved light granite plaque for each of the 12 Zodiac pedestals.
+ */
+export function createZodiacPlaqueTexture(
+  koreanName: string,
+  branch: string,
+  hanja: string,
+  anisotropy: number,
+): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 160;
+  const ctx = canvas.getContext('2d')!;
+
+  ctx.fillStyle = '#2d2f33';
+  ctx.fillRect(0, 0, 256, 160);
+
+  ctx.strokeStyle = '#c4ab7c';
+  ctx.lineWidth = 5;
+  ctx.strokeRect(10, 10, 236, 140);
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  ctx.fillStyle = '#e7cf9e';
+  ctx.font = 'bold 42px "Noto Serif KR", Georgia, serif';
+  ctx.fillText(hanja, 128, 56);
+
+  ctx.fillStyle = '#f5efe4';
+  ctx.font = 'bold 28px "Noto Serif KR", Georgia, serif';
+  ctx.fillText(`${koreanName} (${branch})`, 128, 114);
+
+  return configureTexture(canvas, true, anisotropy, 1, 1);
+}
+
+/**
+ * Deep indigo & gold plaque for the "별의 도시 영천 · 보현산 별빛체험존" gateway arch.
+ */
+export function createStarlightArchSignTexture(anisotropy: number): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 160;
+  const ctx = canvas.getContext('2d')!;
+
+  const grad = ctx.createLinearGradient(0, 0, 512, 160);
+  grad.addColorStop(0, '#101c36');
+  grad.addColorStop(0.5, '#1a2b52');
+  grad.addColorStop(1, '#101c36');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 512, 160);
+
+  // Twinkling background micro-stars
+  const rand = seededRand(202611);
+  for (let i = 0; i < 65; i++) {
+    const x = 18 + rand() * 476;
+    const y = 18 + rand() * 124;
+    const r = 0.8 + rand() * 1.8;
+    ctx.fillStyle = rand() > 0.35 ? 'rgba(255, 232, 165, 0.72)' : 'rgba(180, 222, 255, 0.65)';
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.strokeStyle = '#e8c46a';
+  ctx.lineWidth = 5;
+  ctx.strokeRect(10, 10, 492, 140);
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  ctx.fillStyle = '#f7d983';
+  ctx.font = 'bold 22px "Gowun Dodum", sans-serif';
+  ctx.fillText('★ 별의 도시 영천 · BOHYEONSAN ★', 256, 52);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 40px "Noto Serif KR", Georgia, serif';
+  ctx.fillText('보현산 별빛체험존', 256, 108);
+
+  return configureTexture(canvas, true, anisotropy, 1, 1);
+}
+
+/**
+ * Warm wooden park wayfinding signpost texture.
+ */
+export function createParkDirectionSignTexture(anisotropy: number): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d')!;
+
+  ctx.fillStyle = '#473322';
+  ctx.fillRect(0, 0, 512, 256);
+
+  ctx.strokeStyle = '#9c7d56';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(12, 12, 488, 232);
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  ctx.fillStyle = '#f6dfb0';
+  ctx.font = 'bold 26px "Noto Serif KR", Georgia, serif';
+  ctx.fillText('영천 북안면 돌할매공원 안내', 256, 48);
+
+  ctx.strokeStyle = 'rgba(220, 192, 140, 0.4)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(46, 76);
+  ctx.lineTo(466, 76);
+  ctx.stroke();
+
+  ctx.fillStyle = '#fff5e2';
+  ctx.font = 'bold 24px "Gowun Dodum", sans-serif';
+  ctx.fillText('↑  돌할매 전각 · 십이지신상', 256, 114);
+
+  ctx.fillStyle = '#a8d5ff';
+  ctx.fillText('←  보현산 별빛체험존 · 천문대', 256, 160);
+
+  ctx.fillStyle = '#d8b4fe';
+  ctx.fillText('→  영천 포도 쉼터 · 연못 정자', 256, 206);
+
+  return configureTexture(canvas, true, anisotropy, 1, 1);
+}
+
+
